@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Logs</h1>
+
+    <form id="filterForm">
+        <label for="user_id">User ID:</label>
+        <input type="text" id="user_id" name="user_id" placeholder="Enter User ID">
+
+        <label for="start_date">Start date:</label>
+        <input type="date" id="start_date" name="start_date">
+
+        <label for="end_date">End date:</label>
+        <input type="date" id="end_date" name="end_date">
+
+        <label for="order">Order:</label>
+        <select id="order" name="order">
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+        </select>
+
+        <button type="submit">Filter</button>
+    </form>
+
+    <table id="logsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User ID</th>
+                <th>Command</th>
+                <th>Response</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="logsTableBody">
+        </tbody>
+    </table>
+
+    <div id="pagination"></div>
+
+    <script>
+        let currentPage = 1;
+        const perPage = 10;
+
+        async function fetchLogs(page = 1) {
+            const form = document.getElementById('filterForm');
+            const formData = new FormData(form);
+
+            const queryParams = new URLSearchParams(formData);
+            queryParams.append('page', page);
+            queryParams.append('per_page', perPage);
+
+            const response = await fetch(`/logs?${queryParams.toString()}`);
+            const data = await response.json();
+            return data;
+        }
+
+        function renderLogs(logs) {
+            const tableBody = document.getElementById('logsTableBody');
+            tableBody.innerHTML = '';
+
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.id}</td>
+                    <td>${log.user_id}</td>
+                    <td>${log.command}</td>
+                    <td>${log.response}</td>
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function renderPagination(totalPages, currentPage, nextPage, prevPage) {
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            if (prevPage) {
+                const prevButton = document.createElement('button');
+                prevButton.textContent = 'Previous';
+                prevButton.onclick = () => loadLogs(prevPage);
+                paginationDiv.appendChild(prevButton);
+            }
+
+            const pageInfo = document.createElement('span');
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            paginationDiv.appendChild(pageInfo);
+
+            if (nextPage) {
+                const nextButton = document.createElement('button');
+                nextButton.textContent = 'Next';
+                nextButton.onclick = () => loadLogs(nextPage);
+                paginationDiv.appendChild(nextButton);
+            }
+        }
+
+        async function loadLogs(page = 1) {
+            const data = await fetchLogs(page);
+            renderLogs(data.logs);
+            renderPagination(data.total_pages, data.current_page, data.next_page, data.prev_page);
+            currentPage = page;
+        }
+
+        document.getElementById('filterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await loadLogs(1);
+        });
+
+        // Initial load
+        loadLogs();
+    </script>
+</body>
+</html>
